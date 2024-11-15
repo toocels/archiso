@@ -1,0 +1,2 @@
+todo
+enable networkmanager service
