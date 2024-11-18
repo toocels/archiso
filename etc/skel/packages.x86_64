@@ -26,6 +26,7 @@ gnome-calculator
 gnome-calendar
 gnome-color-manager
 gnome-connections
+gnome-console
 gnome-control-center
 gnome-disk-utility
 gnome-font-viewer
@@ -80,6 +81,8 @@ nvme-cli
 okular-git
 oneko
 os-prober
+pacman-contrib
+pdftk
 postman-bin
 powertop
 python-keyboard

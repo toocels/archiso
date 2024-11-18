@@ -27,7 +27,7 @@ mount /dev/${DRIVE}2 /mnt
 mkdir -p /mnt/boot/efi
 mount /dev/${DRIVE}1 /mnt/boot/efi
 
-pacstrap /mnt base linux linux-firmware nano networkmanager grub sudo base-devel git efibootmgr
+pacstrap /mnt base linux linux-firmware nano networkmanager grub sudo base-devel git efibootmgr gnome-shell gnome-console gparted timeshift gdm
 genfstab -U /mnt >> /mnt/etc/fstab
 
 cp install-chroot.sh /mnt/

@@ -1,16 +1,12 @@
-# CSTM_REPO = base linux linux-firmware nano networkmanager grub sudo base-devel git efibootmgr
-CSTM_REPO = $(shell cat cstm_repo_packages.x86_64 | tr '\n' ' ')
-
 all:	
-	make pacstrap -i
-	make archlinux -i 
-	make build -i
+	make pacstrap
+	make archlinux
+	make build
 
 archlinux:
 	cp -r /usr/share/archiso/configs/releng/ archlive
 	cp -r etc/* archlive/airootfs/etc/
 
-	#echo -e "gnome-shell\ngnome-terminal\nnetworkmanager" >> archlive/packages.x86_64
 	cat live_packages.x86_64 >> archlive/packages.x86_64
 
 	rm archlive/airootfs/etc/systemd/system/getty@tty1.service.d/autologin.conf
@@ -31,24 +27,45 @@ build:
 	cp -r /pac-build/out ./
 
 pacstrap:
-	#sudo rm -r /pac-cache; sudo mkdir /pac-cache
-	sudo rm -r etc/skel/mePkg; sudo mkdir -p etc/skel/mePkg
-	
-	# take snapshot of packages currently instlaled in host
-	comm -23 <(pacman -Qqe | sort) <(pacman -Qqm | sort) > cstm_repo_packages.x86_64
-	pacman -Qqe > etc/skel/cstm_repo_packages_yay.x86_64
+	@echo "Starting pacstrap process..."
+	# Define variables
+	PAC_CACHE=/pac-cache
+	TMP_FILE=$$(mktemp)
+	CACHE_CONTENT=$$(ls /var/cache/pacman/pkg)
 
-	# find all dependencies
-	for i in $(CSTM_REPO); do pacman -Qi $$i | grep "Depends On .*" -o | sed 's/Depends On .*: //' | sed 's/[[:space:]]\+/\n/g' >> depended_all_tmp.txt; done
-	cat depended_all_tmp.txt | sort | uniq > depended_all_tmp2.txt
-	sed -i 's/None//' depended_all_tmp2.txt
-	sed -i 's/>=[^ ]*$//' depended_all_tmp2.txt
-	cat depended_all_tmp2.txt | sort | uniq > depended_all.txt
+	# Clean up and prepare directories
+	sudo rm -rf $${PAC_CACHE} etc/skel/mePkg
+	sudo mkdir -p $${PAC_CACHE} etc/skel/mePkg
 
-	sudo pacman -Syw --cachedir /pac-cache --noconfirm $(shell cat depended_all.txt)
+	# Backup installed packages
+	pacman -Qqe > etc/skel/packages.x86_64
 
-	#sudo cp /var/cache/pacman/pkg/* /pac-cache/
-	#sudo cp /pac-cache/* etc/skel/mePkg
-	#sudo repo-add etc/skel/mePkg/mePkg.db.tar.gz etc/skel/mePkg/*.zst
-	#sudo chown $$USER:$$USER -R etc/skel/mePkg/
-	#sudo rm -r /pac-cache
+	# Find all dependencies
+	echo "Finding all dependencies..."
+	for pkg in base linux linux-firmware nano networkmanager grub sudo base-devel git efibootmgr gnome-shell gnome-console gparted timeshift gdm; do \
+		pactree -lu $$pkg >> $${TMP_FILE}; \
+	done
+	sed -i 's/None//' $${TMP_FILE}
+	sed -i 's/>=[^ ]*$$//' $${TMP_FILE}
+	sort -u $${TMP_FILE} -o dependencies.txt
+
+	# Download and copy package files
+	echo "Downloading and copying packages..."
+	while read -r pkg; do \
+		fn=$$(sudo pacman -Sp $$pkg | awk -F/ '{print $$NF}'); \
+		if echo $${CACHE_CONTENT} | grep -qw $$fn; then \
+			sudo cp /var/cache/pacman/pkg/$$fn $${PAC_CACHE}; \
+			sudo cp /var/cache/pacman/pkg/$$fn.sig $${PAC_CACHE} 2>/dev/null || true; \
+		else \
+			sudo pacman -Sw --cachedir $${PAC_CACHE} --noconfirm $$pkg; \
+		fi; \
+	done < dependencies.txt
+
+	# Create the package repository
+	echo "Creating package repository..."
+	sudo cp $${PAC_CACHE}/* etc/skel/mePkg
+	sudo repo-add etc/skel/mePkg/mePkg.db.tar.gz etc/skel/mePkg/*.zst
+
+	# Clean up
+	rm -f $${TMP_FILE}
+	echo "Pacstrap process completed."
