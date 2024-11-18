@@ -25,20 +25,30 @@ archlinux:
 	#nano archlive/syslinux/syslinux.cfg
 
 build:
-	sudo rm -r /pac-build
-	sudo mkdir /pac-build
+	sudo rm -r /pac-build; sudo mkdir /pac-build
 	sudo cp -r ./* /pac-build/
 	cd /pac-build;	sudo mkarchiso -v archlive
 	cp -r /pac-build/out ./
 
 pacstrap:
-	#comm -23 <(pacman -Qqe | sort) <(pacman -Qqm | sort) > cstm_repo_packages.x86_64
-	#pacman -Qqe > etc/skel/cstm_repo_packages_yay.x86_64
-
-	sudo rm -r /pac-cache; sudo mkdir /pac-cache
+	#sudo rm -r /pac-cache; sudo mkdir /pac-cache
 	sudo rm -r etc/skel/mePkg; sudo mkdir -p etc/skel/mePkg
-	#sudo pacman -Syw --cachedir /pac-cache $(CSTM_REPO) --noconfirm
-	sudo cp /var/cache/pacman/pkg/* /pac-cache/
-	sudo cp /pac-cache/* etc/skel/mePkg
-	sudo repo-add etc/skel/mePkg/mePkg.db.tar.gz etc/skel/mePkg/*.zst
-	sudo chown $$USER:$$USER -R etc/skel/mePkg/
+	
+	# take snapshot of packages currently instlaled in host
+	comm -23 <(pacman -Qqe | sort) <(pacman -Qqm | sort) > cstm_repo_packages.x86_64
+	pacman -Qqe > etc/skel/cstm_repo_packages_yay.x86_64
+
+	# find all dependencies
+	for i in $(CSTM_REPO); do pacman -Qi $$i | grep "Depends On .*" -o | sed 's/Depends On .*: //' | sed 's/[[:space:]]\+/\n/g' >> depended_all_tmp.txt; done
+	cat depended_all_tmp.txt | sort | uniq > depended_all_tmp2.txt
+	sed -i 's/None//' depended_all_tmp2.txt
+	sed -i 's/>=[^ ]*$//' depended_all_tmp2.txt
+	cat depended_all_tmp2.txt | sort | uniq > depended_all.txt
+
+	sudo pacman -Syw --cachedir /pac-cache --noconfirm $(shell cat depended_all.txt)
+
+	#sudo cp /var/cache/pacman/pkg/* /pac-cache/
+	#sudo cp /pac-cache/* etc/skel/mePkg
+	#sudo repo-add etc/skel/mePkg/mePkg.db.tar.gz etc/skel/mePkg/*.zst
+	#sudo chown $$USER:$$USER -R etc/skel/mePkg/
+	#sudo rm -r /pac-cache
