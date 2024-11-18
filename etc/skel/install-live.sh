@@ -31,6 +31,6 @@ pacstrap /mnt base linux linux-firmware nano networkmanager grub sudo base-devel
 genfstab -U /mnt >> /mnt/etc/fstab
 
 cp install-chroot.sh /mnt/
-cp packages.x86_64 /mnt/
+cp *.x86_64 /mnt/
 
 arch-chroot /mnt bash /install-chroot.sh

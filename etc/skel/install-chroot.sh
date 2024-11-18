@@ -24,6 +24,7 @@ passwd ${USERNAME}
 
 grub-install --efi-directory=/boot/efi
 grub-mkconfig -o /boot/grub/grub.cfg
+pacman -Sy
 
 #bootctl install
 #DRIVE=sda
