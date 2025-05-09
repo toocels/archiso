@@ -1,0 +1,19 @@
+#!/bin/bash
+#set -e
+
+echo "$(date "+%Y-%m-%d %H:%M:%S") - Starting package setup..."
+
+# Copying pacman cache files
+cp /var/cache/pacman/pkg/* mePkg/
+
+# Creating list of pacman packages
+comm -23 <(pacman -Qqe | sort) <(pacman -Qqm | sort) > pacman_packages.x86_64
+pacman -Qqe > packages.x86_64
+
+# Downloading pacman files
+sudo pacman -Sw --cachedir /iso/mePkg $(cat pacman_packages.x86_64) --asdeps --noconfirm
+
+# Adding the pacman files to the local repo
+sudo repo-add mePkg/mePkg.db.tar.gz mePkg/*.zst
+
+echo "$(date "+%Y-%m-%d %H:%M:%S") - Package setup completed."
