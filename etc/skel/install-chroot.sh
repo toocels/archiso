@@ -22,7 +22,10 @@ useradd -mG wheel ${USERNAME}
 echo "Enter password for ${USERNAME} user:"
 passwd ${USERNAME}
 
-grub-install --efi-directory=/boot/efi
+#cd yay
+#makepkg -si
+
+grub-install
 grub-mkconfig -o /boot/grub/grub.cfg
 
 #bootctl install

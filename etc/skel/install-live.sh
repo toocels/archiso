@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DRIVE=vda
+DRIVE=sda
 
 if [ "$EUID" -ne 0 ]
 then
@@ -27,10 +27,13 @@ mount /dev/${DRIVE}2 /mnt
 mkdir -p /mnt/boot/efi
 mount /dev/${DRIVE}1 /mnt/boot/efi
 
-pacstrap /mnt base linux linux-firmware nano networkmanager grub sudo base-devel git efibootmgr gnome-shell gnome-console gparted timeshift gdm firefox
+#pacstrap /mnt $(cat package_min.txt)
+pacstrap /mnt $(cat packages_pacman.txt)
 genfstab -U /mnt >> /mnt/etc/fstab
 
-cp install-chroot.sh /mnt/
-cp *.x86_64 /mnt/
+cp *.sh /mnt/
 
 arch-chroot /mnt bash /install-chroot.sh
+
+cp *.txt /mnt/home/toocels/
+cp -r yay /mnt/home/toocels/
