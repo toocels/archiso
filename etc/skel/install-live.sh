@@ -27,8 +27,7 @@ mount /dev/${DRIVE}2 /mnt
 mkdir -p /mnt/boot/efi
 mount /dev/${DRIVE}1 /mnt/boot/efi
 
-#pacstrap /mnt $(cat package_min.txt)
-pacstrap /mnt $(cat packages_pacman.txt)
+pacstrap /mnt $(cat pacman_packages.x86_64)
 genfstab -U /mnt >> /mnt/etc/fstab
 
 cp *.sh /mnt/
