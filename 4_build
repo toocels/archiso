@@ -7,6 +7,6 @@ exec > >(tee -a build.log) 2>&1
 echo "$(date "+%Y-%m-%d %H:%M:%S") - Starting ISO build..."
 
 # Building the ISO
-sudo mkarchiso -v archlive
+time sudo mkarchiso -v archlive
 
 echo "$(date "+%Y-%m-%d %H:%M:%S") - ISO build completed."
