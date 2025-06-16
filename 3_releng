@@ -23,7 +23,7 @@ echo "%wheel ALL=(ALL) NOPASSWD: ALL" > archlive/airootfs/etc/sudoers
 # Customizing profiledef.sh
 sed -i 's/"archlinux/"cstm-archlinux/' archlive/profiledef.sh
 sed -i '/\["\/etc\/shadow"\]="0:0:400"/a \  ["\/etc\/gshadow"]="0:0:400"' archlive/profiledef.sh
-sed -i 's/%ARCHISO_UUID%/%ARCHISO_UUID% copytoram=no/' archlive/efiboot/loader/entries/01-archiso-x86_64-linux.conf
+sed -i 's/%ARCHISO_UUID%/%ARCHISO_UUID% copytoram=no  tmpfs_size=100%/' archlive/efiboot/loader/entries/01-archiso-x86_64-linux.conf
 sed -i 's/on/off/' archlive/efiboot/loader/loader.conf
 
 # Adding packages to archlive system
