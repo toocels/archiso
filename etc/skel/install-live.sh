@@ -34,5 +34,5 @@ cp *.sh /mnt/
 
 arch-chroot /mnt bash /install-chroot.sh
 
-cp *.txt /mnt/home/toocels/
+cp *.x86_64 /mnt/home/toocels/
 cp -r yay /mnt/home/toocels/
