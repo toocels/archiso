@@ -4,10 +4,12 @@ HOSTNAME=archbtw
 USERNAME=toocels
 
 systemctl enable NetworkManager
+systemctl enable bluetoothd
+systemctl enable gdm
 
 ln -sf /usr/share/zoneinfo/Asia/Kolkata /etc/localtime
-echo "kok_IN UTF-8" >> /etc/locale.gen
-echo 'LANG="C.UTF-8"' > /etc/locale.conf
+echo "en_IN UTF-8" >> /etc/locale.gen
+echo "LANG=en_IN.UTF-8" > /etc/locale.conf
 echo "KEYMAP=us" > /etc/vconsole.conf
 echo "${HOSTNAME}" > /etc/hostname
 printf "\n127.0.0.1\tlocalhost\n::1\t\tlocalhost\n127.0.0.1\t${HOSTNAME}" >> /etc/hosts
@@ -22,11 +24,16 @@ useradd -mG wheel ${USERNAME}
 echo "Enter password for ${USERNAME} user:"
 passwd ${USERNAME}
 
-#cd yay
-#makepkg -si
+usermod -aG docker toocels
 
-grub-install
-grub-mkconfig -o /boot/grub/grub.cfg
+#echo "root=UUID=$(blkid -s UUID -o value /dev/sda2) rw rootflags=subvol=@ quiet loglevel=3 systemd.show_status=auto rd.udev.log_level=3 vt.global_cursor_default=0" > /etc/kernel/cmdline
+#read comment deafult_image, uncomment default_uki, also uncomment bitmap image
+#nano /etc/mkinitcpio.d/linux.preset
+#mkinitcpio -p linux
+#efibootmgr --create --disk /dev/sda1 --part 1 --label "Arch Linux" --loader /EFI/Linux/arch-linux.efi --unicode
+
+#grub-install
+#grub-mkconfig -o /boot/grub/grub.cfg
 
 #bootctl install
 #DRIVE=sda
@@ -35,10 +42,3 @@ grub-mkconfig -o /boot/grub/grub.cfg
 
 #install yay
 #git clone https://aur.archlinux.org/yay.git; cd yay; makepkg -si
-#install synth-shell
-#git clone --recursive https://github.com/andresgongora/synth-shell.git; cd synth-shell; ./setup.sh
-
-#useradd -aG docker toocels
-#sudo systemctl enable bluetoothd
-#sudo systemctl enable gdm
-

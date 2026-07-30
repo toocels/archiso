@@ -1,27 +1,33 @@
 #!/bin/bash
-#set -e
+set -e
 
 echo "$(date "+%Y-%m-%d %H:%M:%S") - Starting package setup..."
 
-# Copying pacman cache files
-cp /var/cache/pacman/pkg/* mePkg/
+rm -rf mePkg
+mkdir mePkg
+sudo cp -r /var/cache/pacman/pkg/* mePkg/
+sudo chown -R $(whoami):$(whoami) mePkg
+sudo chmod -R 777 mePkg
 
-# Creating list of pacman packages
-comm -23 <(pacman -Qqe | sort) <(pacman -Qqm | sort) > pacman_packages.x86_64
-pacman -Qqe > packages.x86_64
+comm -23 <(pacman -Qqe | sort) <(pacman -Qqm | sort) > etc/skel/packages_pacman.x86_64
+pacman -Qqe > etc/skel/packages.x86_64
 
-# Resolve all dependencies and create a file with it
 rm -f deps.txt
-for pkg in $(cat pacman_packages.x86_64)
+for pkg in $(cat etc/skel/packages_pacman.x86_64)
 do
-	pactree -lu $pkg >> deps.txt
+	pactree -lu "$pkg" >> deps.txt
 done
-sort deps.txt | uniq > deps.txt.temp && mv deps.txt.temp deps.txt
+# Strip version constraints (e.g. >=, <=, =) and [unresolvable] lines
+sed -i -e 's/[<>=].*//' -e '/\[unresolvable\]/d' deps.txt
+sort -u deps.txt > deps.txt.temp
+mv deps.txt.temp deps.txt
+sed -i '/\[unresolvable\]/d' deps.txt
 
-# Downloading pacman files and their dependencies (with correct resolution)
-sudo pacman -Syw --cachedir /iso/mePkg $(cat deps.txt) --noconfirm
+sudo pacman -Sywd --cachedir ./mePkg $(cat deps.txt) --noconfirm
 
-# Adding the pacman files to the local repo
 sudo repo-add mePkg/mePkg.db.tar.gz mePkg/*.zst
 
+tar -cf mePkg.tar mePkg
+
 echo "$(date "+%Y-%m-%d %H:%M:%S") - Package setup completed."
+

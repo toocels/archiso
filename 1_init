@@ -5,8 +5,8 @@ echo "$(date "+%Y-%m-%d %H:%M:%S") - Starting initialization..."
 
 # Removing and setting up /iso directory
 sudo rm -rf /iso
-sudo mkdir -p /iso/mePkg
-sudo chown -R toocels:toocels /iso
+sudo mkdir /iso
+sudo chown toocels:toocels /iso
 cp -r * /iso
 
 echo "$(date "+%Y-%m-%d %H:%M:%S") - Initialization completed. Run: cd /iso"
