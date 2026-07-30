@@ -27,12 +27,14 @@ mount /dev/${DRIVE}2 /mnt
 mkdir -p /mnt/boot/efi
 mount /dev/${DRIVE}1 /mnt/boot/efi
 
+pacman-key --init
+pacman-key --populate
+
 pacstrap /mnt $(cat pacman_packages.x86_64)
 genfstab -U /mnt >> /mnt/etc/fstab
 
 cp *.sh /mnt/
+cp *.x86_64 /mnt/
 
 arch-chroot /mnt bash /install-chroot.sh
-
-cp *.x86_64 /mnt/home/toocels/
 cp -r yay /mnt/home/toocels/
