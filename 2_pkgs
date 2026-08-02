@@ -5,7 +5,7 @@ echo "$(date "+%Y-%m-%d %H:%M:%S") - Starting package setup..."
 
 rm -rf mePkg
 mkdir mePkg
-sudo cp -r /var/cache/pacman/pkg/* mePkg/
+#sudo cp -r /var/cache/pacman/pkg/* mePkg/
 sudo chown -R $(whoami):$(whoami) mePkg
 sudo chmod -R 777 mePkg
 

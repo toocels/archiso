@@ -1,10 +1,12 @@
 #!/bin/bash
 
+DRIVE=${DRIVE:?Define DRIVE var with like sda or something bruh}
+
 HOSTNAME=archbtw
 USERNAME=toocels
 
 systemctl enable NetworkManager
-systemctl enable bluetoothd
+systemctl enable bluetooth
 systemctl enable gdm
 
 ln -sf /usr/share/zoneinfo/Asia/Kolkata /etc/localtime
@@ -26,19 +28,23 @@ passwd ${USERNAME}
 
 usermod -aG docker toocels
 
-#echo "root=UUID=$(blkid -s UUID -o value /dev/sda2) rw rootflags=subvol=@ quiet loglevel=3 systemd.show_status=auto rd.udev.log_level=3 vt.global_cursor_default=0" > /etc/kernel/cmdline
-#read comment deafult_image, uncomment default_uki, also uncomment bitmap image
-#nano /etc/mkinitcpio.d/linux.preset
-#mkinitcpio -p linux
-#efibootmgr --create --disk /dev/sda1 --part 1 --label "Arch Linux" --loader /EFI/Linux/arch-linux.efi --unicode
-
-#grub-install
+# Grub bootmgr
+#grub-install --efi-dir=/boot/efi
 #grub-mkconfig -o /boot/grub/grub.cfg
 
-#bootctl install
-#DRIVE=sda
-#echo -e "timeout 3\ndefault arch.conf" >> /boot/loader/loader.conf
-#echo -e "title   Arch Linux\nlinux   /vmlinuz-linux\ninitrd  /initramfs-linux.img\noptions root=/dev/${DRIVE}2 rw" >> /boot/loader/entries/arch.conf
+# UKI
+#echo "root=UUID=$(blkid -s UUID -o value /dev/${DRIVE}2) rw quiet loglevel=3 systemd.show_status=auto rd.udev.log_level=3 vt.global_cursor_default=0" > /etc/kernel/cmdline
+# echo comment default_image, uncomment default_uki, also uncomment bitmap image, AND change /efi to /boot/efi
+#read smthng
+#nano /etc/mkinitcpio.d/linux.preset
+#mkdir -p /boot/efi/EFI/Linux
+#mkinitcpio -p linux
+#efibootmgr --create --disk /dev/${DRIVE}1 --part 1 --label "Arch Linux" --loader /EFI/Linux/arch-linux.efi --unicode
 
-#install yay
+# install yay
 #git clone https://aur.archlinux.org/yay.git; cd yay; makepkg -si
+
+# Sbctl secure boot setup
+#sbctl create-keys
+#sbctl enroll-keys -m
+#sbctl sign -s /boot/efi/EFI/Linux/arch-linux.efi
