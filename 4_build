@@ -8,3 +8,18 @@ echo "$(date "+%Y-%m-%d %H:%M:%S") - Starting ISO build..."
 time sudo mkarchiso -v archlive
 
 echo "$(date "+%Y-%m-%d %H:%M:%S") - ISO build completed."
+
+echo "$(date "+%Y-%m-%d %H:%M:%S") - Injecting offline repo into ISO..."
+
+iso=$(ls out/*-x86_64.iso)
+repo_iso="$(basename "${iso%.iso}")-repo.iso"
+
+xorriso -indev "$iso" \
+	-outdev "$repo_iso" \
+	-boot_image any replay \
+	-map mePkg /mePkg \
+	-commit
+
+sudo mv "$repo_iso" out/
+
+echo "$(date "+%Y-%m-%d %H:%M:%S") - Offline repo injected: out/$repo_iso"
