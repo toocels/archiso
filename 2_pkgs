@@ -9,11 +9,11 @@ mkdir mePkg
 sudo chown -R $(whoami):$(whoami) mePkg
 sudo chmod -R 777 mePkg
 
-comm -23 <(pacman -Qqe | sort) <(pacman -Qqm | sort) > etc/skel/packages_pacman.x86_64
-pacman -Qqe > etc/skel/packages.x86_64
+comm -23 <(pacman -Qqe | sort) <(pacman -Qqm | sort) > packages_pacman.x86_64
+pacman -Qqe > packages.x86_64
 
 rm -f deps.txt
-for pkg in $(cat etc/skel/packages_pacman.x86_64)
+for pkg in $(cat packages_pacman.x86_64)
 do
 	pactree -lu "$pkg" >> deps.txt
 done
