@@ -5,14 +5,16 @@ exec > build.log 2>&1
 
 echo "$(date "+%Y-%m-%d %H:%M:%S") - Starting ISO build..."
 
-time sudo mkarchiso -v archlive
+# Limit CPU usage to 75% of total system capacity
+quota=$(( $(nproc) * 50 ))%
+time sudo systemd-run --scope -p CPUQuota="$quota" mkarchiso -v archlive
 
 echo "$(date "+%Y-%m-%d %H:%M:%S") - ISO build completed."
 
 echo "$(date "+%Y-%m-%d %H:%M:%S") - Injecting offline repo into ISO..."
 
 iso=$(ls out/*-x86_64.iso)
-repo_iso="$(basename "${iso%.iso}")-repo.iso"
+repo_iso="$(basename "${iso%.iso}")-wrepo.iso"
 
 xorriso -indev "$iso" \
 	-outdev "$repo_iso" \

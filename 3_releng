@@ -3,10 +3,10 @@ set -e
 
 echo "$(date "+%Y-%m-%d %H:%M:%S") - Starting archlive setup..."
 
-comm -23 <(pacman -Qqe | sort) <(pacman -Qqm | sort) > etc/skel/packages_pacman.x86_64
-pacman -Qqe > etc/skel/packages.x86_64
-
 cp -r /usr/share/archiso/configs/releng/ archlive
+
+cp packages_pacman.x86_64 etc/skel/packages_pacman.x86_64
+cp packages.x86_64 etc/skel/packages.x86_64
 
 cp -r etc/* archlive/airootfs/etc/
 
