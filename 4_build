@@ -5,7 +5,7 @@ exec > build.log 2>&1
 
 echo "$(date "+%Y-%m-%d %H:%M:%S") - Starting ISO build..."
 
-# Limit CPU usage to 75% of total system capacity
+# Throttle CPU usage using systemd resource control
 quota=$(( $(nproc) * 50 ))%
 time sudo systemd-run --scope -p CPUQuota="$quota" mkarchiso -v archlive
 

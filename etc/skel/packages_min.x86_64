@@ -20,6 +20,7 @@ tmux
 usbutils
 vim
 zsh
+man-db
 
 # Basic GUI
 firefox
@@ -29,6 +30,7 @@ gnome-terminal
 gnome-text-editor
 yay
 vulkan-intel
+timeshift
 
 # Looks
 bat
@@ -43,8 +45,10 @@ lolcat
 7zip
 acpi
 bind
+btop
 bc
 bluez-utils
+certbot
 downgrade
 exfatprogs
 fdupes
@@ -60,9 +64,9 @@ nss-mdns
 ntfs-3g
 nvme-cli
 oh-my-zsh-git
-samba
 sshpass
 stress
+wl-clipboard
 testdisk
 ufw
 wget
@@ -73,14 +77,16 @@ antigravity-ide
 claude-code
 docker
 docker-compose
+docker-buildx
+go
 github-cli
 glab
-jre-openjdk
 npm
 rust
 zed
+opencode
 
-# GUI applciations
+# GUI applications
 brave-origin-bin
 dbeaver
 file-roller
@@ -99,10 +105,10 @@ qbittorrent
 rpi-imager
 telegram-desktop
 rustdesk-bin
-spotify
 ventoy-bin
 vlc
 vlc-plugins-all
+tlauncher-installer
 
 # GNOME
 gnome-backgrounds
@@ -112,16 +118,11 @@ gnome-connections
 gnome-control-center
 gnome-menus
 gnome-remote-desktop
-gnome-shell-extensions
-gnome-shell-extension-appindicator-git
-gnome-shell-extension-blur-my-shell-git
-gnome-shell-extension-caffeine-git
-gnome-shell-extension-gnome-clipboard-history-git
-gnome-shell-extension-gsconnect-git
-gnome-shell-extension-just-perfection-desktop-git
 gnome-system-monitor
 gnome-tweaks
+gnome-shell-extensions
 power-profiles-daemon
+extension-manager
 snapshot
 dconf-editor
 
@@ -160,6 +161,13 @@ virtualbox-guest-iso
 #lutris
 #wine
 #lib32-vulkan-intel
-#chromium
-python313
-tk
+chromium
+#python313
+#tk
+#retroarch
+
+aspnet-runtime
+aspnet-targeting-pack
+dotnet-sdk
+ex-vi-compat
+rpm-tools

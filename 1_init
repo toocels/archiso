@@ -3,10 +3,13 @@ set -e
 
 echo "$(date "+%Y-%m-%d %H:%M:%S") - Starting initialization..."
 
-# Removing and setting up /iso directory
+# Prepare /iso working directory
+TARGET_USER="${SUDO_USER:-$(id -un)}"
+TARGET_GROUP="${SUDO_USER:-$(id -gn)}"
+
 sudo rm -rf /iso
 sudo mkdir /iso
-sudo chown toocels:toocels /iso
+sudo chown "${TARGET_USER}:${TARGET_GROUP}" /iso
 cp -r * /iso
 
-echo "$(date "+%Y-%m-%d %H:%M:%S") - Initialization completed. Run: cd /iso"
+echo "$(date "+%Y-%m-%d %H:%M:%S") - Initialization completed. Please change directory: cd /iso"
