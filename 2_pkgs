@@ -1,33 +1,76 @@
 #!/bin/bash
+# -----------------------------------------------------------------------------
+# Project: Arch Linux Custom ISO & Offline Repository Builder
+# File: 2_pkgs
+# Description: Stage 2 - Offline Package Repository Assembly
+#              Reads the package collection manifest from etc/skel/packages_collection.x86_64,
+#              separates official repository packages from AUR packages, computes recursive
+#              dependencies using pactree, downloads package archives into mePkg/, and
+#              indexes them into a local pacman database (mePkg.db.tar.gz).
+#
+# License: GNU General Public License v3.0 (GPL-3.0-or-later)
+# SPDX-License-Identifier: GPL-3.0-or-later
+# -----------------------------------------------------------------------------
 set -e
 
 echo "$(date "+%Y-%m-%d %H:%M:%S") - Starting package setup..."
 
+# Prepare a clean repository directory for offline packages
 rm -rf mePkg
 mkdir mePkg
-#sudo cp -r /var/cache/pacman/pkg/* mePkg/
-sudo chown -R $(whoami):$(whoami) mePkg
 sudo chmod -R 777 mePkg
 
-comm -23 <(pacman -Qqe | sort) <(pacman -Qqm | sort) > packages_pacman.x86_64
-pacman -Qqe > packages.x86_64
+# Path to the package collection file located strictly in etc/skel
+PKG_COLLECTION="etc/skel/packages_collection.x86_64"
 
+if [ ! -f "$PKG_COLLECTION" ]; then
+	echo "Error: Package collection manifest not found at '$PKG_COLLECTION'." >&2
+	exit 1
+fi
+
+echo "Reading package collection from: $PKG_COLLECTION"
+
+# Extract packages from packages_collection.x86_64:
+# 1. Strip lines that are pure comments (leading #)
+# 2. Strip inline comments and trailing whitespace
+# 3. Strip empty/whitespace-only lines
+# 4. Extract package names and sort uniquely
+grep -v '^[[:space:]]*#' "$PKG_COLLECTION" | \
+	sed 's/[[:space:]]*#.*//' | \
+	grep -Ev '^[[:space:]]*$' | \
+	awk '{print $1}' | \
+	sort -u > packages.x86_64
+
+# Filter official Arch repository packages vs AUR/foreign packages.
+# pacman -Slq lists all packages available in configured official repositories.
+# comm -12 retains packages present in both lists (i.e. official packages).
+echo "Filtering official repository packages against sync databases..."
+comm -12 packages.x86_64 <(pacman -Slq | sort -u) > packages_pacman.x86_64
+
+# Compute complete recursive dependency trees for each official package using pactree
+echo "Resolving dependency trees..."
 rm -f deps.txt
 for pkg in $(cat packages_pacman.x86_64)
 do
-	pactree -lu "$pkg" >> deps.txt
+	pactree -lu "$pkg" >> deps.txt 2>/dev/null || pactree -s -lu "$pkg" >> deps.txt 2>/dev/null || true
 done
-# Strip version constraints (e.g. >=, <=, =) and [unresolvable] lines
+
+# Clean dependency list:
+# 1. Remove version constraint operators (e.g. >=, <=, =)
+# 2. Remove [unresolvable] dependency lines
 sed -i -e 's/[<>=].*//' -e '/\[unresolvable\]/d' deps.txt
 sort -u deps.txt > deps.txt.temp
 mv deps.txt.temp deps.txt
-sed -i '/\[unresolvable\]/d' deps.txt
 
+echo "Downloading $(wc -l < deps.txt) resolved packages into ./mePkg..."
+# Download .pkg.tar.zst archives into ./mePkg without installing them to the host
 sudo pacman -Sywd --cachedir ./mePkg $(cat deps.txt) --noconfirm
 
+# Generate the Pacman repository database (mePkg.db.tar.gz) from downloaded archives
+echo "Generating local repository database index..."
 sudo repo-add mePkg/mePkg.db.tar.gz mePkg/*.zst
 
+# Create an uncompressed tar archive of the repository directory for portability
 tar -cf mePkg.tar mePkg
 
-echo "$(date "+%Y-%m-%d %H:%M:%S") - Package setup completed."
-
+echo "$(date "+%Y-%m-%d %H:%M:%S") - Package setup completed successfully."

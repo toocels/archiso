@@ -1,27 +1,46 @@
 #!/bin/bash
+# -----------------------------------------------------------------------------
+# Project: Arch Linux Custom ISO & Offline Repository Builder
+# File: 4_build
+# Description: Stage 4 - Live ISO Compilation & Offline Repository Injection
+#              Compiles the live bootable ISO using mkarchiso under systemd CPU
+#              quota control to prevent host lockup, then grafts the offline package
+#              repository (mePkg) into the root of the ISO image using xorriso.
+#
+# License: GNU General Public License v3.0 (GPL-3.0-or-later)
+# SPDX-License-Identifier: GPL-3.0-or-later
+# -----------------------------------------------------------------------------
 set -e
 
+# Redirect all stdout and stderr streams to build.log for tracking and debugging
 exec > build.log 2>&1
 
-echo "$(date "+%Y-%m-%d %H:%M:%S") - Starting ISO build..."
+echo "$(date "+%Y-%m-%d %H:%M:%S") - Starting ISO compilation..."
 
-# Throttle CPU usage using systemd resource control
+# Calculate CPU quota to throttle mkarchiso resource consumption:
+# Sets ceiling to 50% per CPU core, ensuring host responsiveness during squashfs compression
 quota=$(( $(nproc) * 50 ))%
+echo "Applying CPU quota limit: $quota"
+
+# Execute mkarchiso within a transient systemd scope enforcing the CPUQuota limit
 time sudo systemd-run --scope -p CPUQuota="$quota" mkarchiso -v archlive
 
-echo "$(date "+%Y-%m-%d %H:%M:%S") - ISO build completed."
+echo "$(date "+%Y-%m-%d %H:%M:%S") - Base ISO compilation completed."
 
-echo "$(date "+%Y-%m-%d %H:%M:%S") - Injecting offline repo into ISO..."
-
-iso=$(ls out/*-x86_64.iso)
+# Locate the newly compiled standard ISO image
+iso=$(ls out/*-x86_64.iso | head -n 1)
 repo_iso="$(basename "${iso%.iso}")-wrepo.iso"
 
+echo "$(date "+%Y-%m-%d %H:%M:%S") - Injecting offline repository (mePkg) into ISO using xorriso..."
+
+# Graft the mePkg directory into the ISO root filesystem (/mePkg) without rebuilding the squashfs
 xorriso -indev "$iso" \
 	-outdev "$repo_iso" \
 	-boot_image any replay \
 	-map mePkg /mePkg \
 	-commit
 
+# Move the final repository-injected ISO to the output directory
 sudo mv "$repo_iso" out/
 
-echo "$(date "+%Y-%m-%d %H:%M:%S") - Offline repo injected: out/$repo_iso"
+echo "$(date "+%Y-%m-%d %H:%M:%S") - Offline repository successfully injected: out/$repo_iso"

@@ -26,6 +26,7 @@ A modular automation suite designed to generate customized, bootable Arch Linux 
   - [How to Write the ISO to a USB Drive](#how-to-write-the-iso-to-a-usb-drive)
   - [How to Deploy to Target Hardware (Offline Installation)](#how-to-deploy-to-target-hardware-offline-installation)
   - [How to Customize Live Environment Packages](#how-to-customize-live-environment-packages)
+  - [How to Manage Target Packages in packages_collection.x86_64](#how-to-manage-target-packages-in-packages_collectionx86_64)
   - [How to Customize Default Credentials and Users](#how-to-customize-default-credentials-and-users)
   - [How to Perform a Clean Rebuild](#how-to-perform-a-clean-rebuild)
   - [How to Troubleshoot Build Issues](#how-to-troubleshoot-build-issues)
@@ -38,18 +39,20 @@ A modular automation suite designed to generate customized, bootable Arch Linux 
 
 Deploying Arch Linux across physical workstations or virtual machines in air-gapped, bandwidth-restricted, or reproducible environments requires an installation medium containing all required dependencies locally.
 
-This project automates the extraction of explicitly installed system packages, recursively resolves full dependency graphs using `pactree`, indexes them into an offline Pacman repository database (`mePkg`), builds a customized `archiso` live environment featuring GNOME utilities, and injects the offline repository into the resulting ISO image using `xorriso`.
+This project automates the compilation of a custom offline repository directly from a declarative package collection manifest ([`etc/skel/packages_collection.x86_64`](etc/skel/packages_collection.x86_64)), recursively resolves full dependency graphs using `pactree`, indexes them into an offline Pacman repository database (`mePkg`), builds a customized `archiso` live environment featuring GNOME utilities, and injects the offline repository into the resulting ISO image using `xorriso`.
 
 ---
 
 ## Key Features
 
-- **Automated Dependency Resolution**: Extracts all native packages via `pacman -Qqe` and recursively computes dependencies using `pactree -lu` to guarantee complete offline package trees.
-- **Self-Contained Offline Repository (`mePkg`)**: Downloads `.zst` archives and generates a Pacman database (`repo-add`) mapped directly to the root of the ISO image (`/mePkg`).
+- **Declarative Package Manifest**: Reads packages from [`etc/skel/packages_collection.x86_64`](etc/skel/packages_collection.x86_64) rather than depending on host-installed system packages, ensuring consistent and reproducible builds.
+- **Automated Recursive Dependency Resolution**: Uses `pactree` to resolve complete official dependency trees into `deps.txt` so that no runtime network connectivity is required during target system deployment.
+- **Self-Contained Offline Repository (`mePkg`)**: Downloads `.pkg.tar.zst` packages and generates a Pacman database index (`repo-add mePkg/mePkg.db.tar.gz`) mapped directly into the root of the ISO image (`/mePkg`).
 - **Customized Live Environment**: Bundles administrative utilities (GNOME Terminal, Disks, GParted, TestDisk, Nmap, Fastfetch, `sbctl`, and Btrfs/LVM toolchains) into the live boot medium.
-- **Resource-Constrained Compilation**: Uses `systemd-run --scope -p CPUQuota` to manage CPU utilization during intensive `mkarchiso` squashfs compression.
-- **Direct ISO Layer Injection**: Leverages `xorriso` to graft the offline package repository directly into the built ISO boot structure without requiring a full medium rebuild.
-- **Automated Target Provisioning**: Ships installation helper scripts (`install-live.sh` and `install-chroot.sh`) to automate GPT disk partitioning, filesystem creation, pacstrapping from the local repository, and initial system configuration.
+- **Resource-Constrained Compilation**: Uses `systemd-run --scope -p CPUQuota` to throttle CPU usage during intensive `mkarchiso` squashfs compression, keeping host systems responsive.
+- **Direct ISO Layer Injection**: Leverages `xorriso` to graft the offline package repository directly into the built ISO structure without requiring a full live squashfs rebuild.
+- **Automated Target Provisioning**: Ships automated installation scripts ([`install-live.sh`](etc/skel/install-live.sh) and [`install-chroot.sh`](etc/skel/install-chroot.sh)) to automate GPT disk partitioning, filesystem formatting, offline pacstrapping from the local repository, and initial system configuration.
+- **Free and Open-Source Software**: Licensed under the GNU General Public License v3.0 (GPL-3.0-or-later).
 
 ---
 
@@ -62,9 +65,9 @@ The build workflow is structured into four sequential, decoupled stages:
 ```
 [1_init]   --> Prepares dedicated /iso workspace directory
     |
-[2_pkgs]   --> Resolves package trees, downloads .zst archives, builds mePkg.db
+[2_pkgs]   --> Reads etc/skel/packages_collection.x86_64, resolves deps, builds mePkg.db
     |
-[3_releng] --> Configures archlive profile, injects custom /etc overlays & live packages
+[3_releng] --> Configures archlive profile, overlays custom /etc & packages_live.x86_64
     |
 [4_build]  --> Compiles live ISO (mkarchiso) & injects offline repository (xorriso)
 ```
@@ -73,24 +76,23 @@ The build workflow is structured into four sequential, decoupled stages:
 
 ```
 .
-├── 1_init                    # Workspace setup script (/iso creation)
-├── 2_pkgs                    # Offline package extraction and repository indexer
-├── 3_releng                  # Archiso profile configuration and overlay staging
-├── 4_build                   # Compilation and offline repository injection script
-├── packages_live.x86_64      # Package manifest for live ISO environment
-├── etc/                      # Custom configuration overlays for airootfs
-│   ├── group                 # Pre-configured groups
-│   ├── gshadow               # Pre-configured group shadow database
-│   ├── passwd                # Pre-configured user accounts
-│   ├── shadow                # Pre-configured user shadow database
-│   └── skel/                 # User skeleton directory deployed to live/installed system
-│       ├── .bashrc           # Default shell startup configuration
-│       ├── install-live.sh   # Base system installation and partitioning script
-│       ├── install-chroot.sh # Post-install chroot configuration script
-│       ├── packages_min.x86_64 # Minimal packages reference list
-│       └── yay/              # Bundled AUR helper build source
-├── LICENSE                   # GNU General Public License v3.0
-└── README.md                 # Project documentation
+├── 1_init                         # Stage 1: Workspace setup script (/iso creation)
+├── 2_pkgs                         # Stage 2: Offline package resolution and mePkg repository builder
+├── 3_releng                       # Stage 3: Archiso profile configuration and overlay staging
+├── 4_build                        # Stage 4: ISO compilation and xorriso repository injection
+├── packages_live.x86_64           # Package manifest for live bootable ISO environment
+├── etc/                           # Custom configuration overlays for live and installed systems
+│   ├── group                      # Pre-configured groups
+│   ├── gshadow                    # Pre-configured group shadow database
+│   ├── passwd                     # Pre-configured user accounts
+│   ├── shadow                     # Pre-configured user shadow database
+│   └── skel/                      # User skeleton directory deployed to live/installed system
+│       ├── .bashrc                # Shell startup configuration and aliases (e.g. gui launcher)
+│       ├── install-live.sh        # Automated partitioning and offline pacstrap script
+│       ├── install-chroot.sh      # Automated post-installation chroot configuration script
+│       └── packages_collection.x86_64 # Declarative package manifest for target installation
+├── LICENSE                        # GNU General Public License v3.0
+└── README.md                      # Project documentation
 ```
 
 ---
@@ -129,7 +131,7 @@ cd /iso
 
 ### Step 2: Offline Package Assembly
 
-Calculates recursive dependencies of your system packages, downloads the `.pkg.tar.zst` files into a dedicated cache, and creates the Pacman database:
+Reads [`etc/skel/packages_collection.x86_64`](etc/skel/packages_collection.x86_64), filters official repository packages against the sync database, computes recursive dependencies using `pactree`, downloads `.pkg.tar.zst` files into `mePkg/`, and generates the repository index:
 
 ```bash
 ./2_pkgs
@@ -137,10 +139,11 @@ Calculates recursive dependencies of your system packages, downloads the `.pkg.t
 
 _Generated artifacts:_
 
-- `packages.x86_64`: Full list of installed packages.
-- `packages_pacman.x86_64`: Official repository packages (AUR packages excluded).
-- `deps.txt`: Unified dependency graph.
-- `mePkg/`: Offline package repository containing `.zst` binaries and `mePkg.db.tar.gz`.
+- `packages.x86_64`: Sanitized unique package list from the collection manifest.
+- `packages_pacman.x86_64`: Filtered list of official repository packages (excluding AUR/foreign packages).
+- `deps.txt`: Recursively resolved dependency list.
+- `mePkg/`: Directory containing all `.pkg.tar.zst` files and `mePkg.db.tar.gz`.
+- `mePkg.tar`: Portability archive of the repository directory.
 
 ### Step 3: Archiso Profile Customization
 
@@ -152,13 +155,16 @@ Copies the base `releng` profile and overlays custom configurations:
 
 _Customizations applied:_
 
-- Configures UEFI boot entries (`copytoram=no cow_spacesize=100%`).
-- Injects live package manifest from [packages_live.x86_64](file:///mnt/Storage/ie/programming/bash/archiso/packages_live.x86_64).
-- Overlays system user databases and skeleton installer scripts from `etc/`.
+- Copies standard `releng` profile into `archlive`.
+- Saves `packages.x86_64` and `packages_pacman.x86_64` into `etc/skel/`.
+- Overlays custom configuration tree (`etc/*`) into `archlive/airootfs/etc/`.
+- Appends live environment packages from [`packages_live.x86_64`](packages_live.x86_64) into `archlive/packages.x86_64`.
+- Enforces user authentication by removing tty1 autologin (`getty@tty1.service.d/autologin.conf`).
+- Configures UEFI boot entries with `copytoram=no` and expands copy-on-write overlay space (`cow_spacesize=100%`).
 
 ### Step 4: ISO Compilation and Repository Injection
 
-Compiles the live squashfs image and injects the offline `mePkg` repository into the final media:
+Compiles the live squashfs image and injects the offline `mePkg` repository directly into the ISO filesystem structure:
 
 ```bash
 ./4_build
@@ -243,7 +249,7 @@ Copy the generated `*-wrepo.iso` directly into the data partition of a Ventoy-pr
    lsblk
    ```
 4. **Execute the Automated Installer**:
-   Set the `DRIVE` variable to the base device name (without `/dev/`):
+   Set the `DRIVE` variable to the base device name (defaults to `sda` if omitted):
    - For SATA / USB drives:
      ```bash
      export DRIVE=sda
@@ -269,7 +275,7 @@ Copy the generated `*-wrepo.iso` directly into the data partition of a Ventoy-pr
 
 To include additional troubleshooting utilities, window managers, or drivers in the live boot environment:
 
-1. Open [packages_live.x86_64](file:///mnt/Storage/ie/programming/bash/archiso/packages_live.x86_64).
+1. Open [packages_live.x86_64](packages_live.x86_64).
 2. Append package names (one per line):
    ```text
    htop
@@ -280,12 +286,29 @@ To include additional troubleshooting utilities, window managers, or drivers in 
 
 ---
 
+### How to Manage Target Packages in packages_collection.x86_64
+
+The target installation package list is maintained in [`etc/skel/packages_collection.x86_64`](etc/skel/packages_collection.x86_64).
+
+- Lines starting with `#` are treated as comments and ignored.
+- Inline comments (`# comment`) and empty lines are automatically stripped by `2_pkgs`.
+- Official packages are downloaded into the offline `mePkg` repository.
+- Foreign/AUR packages (e.g. `yay`, `brave-origin-bin`, `rustdesk-bin`) are preserved in `packages.x86_64` for post-installation setup.
+
+> [!NOTE]
+> **Virtual Package Resolution Notes:**
+>
+> - **Java / JDK**: Packages such as `dbeaver` depend on `java-runtime>=21`, which Pacman resolves by pulling OpenJDK. Commenting out `dbeaver` eliminates Java dependencies from the offline repository.
+> - **Vulkan / NVIDIA**: Packages such as `zed` require `vulkan-driver`. If your host system has `nvidia-utils` installed, Pacman may select `nvidia-utils` as the provider for `vulkan-driver`.
+
+---
+
 ### How to Customize Default Credentials and Users
 
 User and group configurations for the live environment are stored in `etc/`:
 
 1. Modify `etc/passwd` and `etc/shadow` to update default usernames, shell assignments, or password hashes.
-2. Modify `etc/skel/install-chroot.sh` to change target install values:
+2. Modify [`etc/skel/install-chroot.sh`](etc/skel/install-chroot.sh) to change target install values:
    ```bash
    HOSTNAME="mycustomhost"
    USERNAME="admin"
@@ -298,8 +321,8 @@ User and group configurations for the live environment are stored in `etc/`:
 To wipe intermediate build artifacts, cached profiles, and partial ISO images:
 
 ```bash
-# Clean working directories
-sudo rm -rf /iso/work /iso/archlive /iso/out /iso/build.log
+# Clean working directories (3_releng removes/recreates archlive itself)
+sudo rm -rf /iso/work /iso/out /iso/build.log
 
 # Re-run pipeline from stage 3 (if mePkg is preserved) or stage 1 (for full rebuild)
 ./3_releng
@@ -314,20 +337,20 @@ sudo rm -rf /iso/work /iso/archlive /iso/out /iso/build.log
 | :------------------------------------------------ | :-------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Out of disk space**                             | `/iso` or `/tmp` filled during squashfs compression | Ensure `/iso` is on a filesystem with at least 25 GB free space.                                                                            |
 | **`pactree: [unresolvable]` errors**              | Package name changed or missing upstream            | Inspect `deps.txt` and verify packages exist in active `pacman` mirrors.                                                                    |
-| **`systemd-run: CPUQuota` throttle too high/low** | Host core count constraints                         | Modify the `quota` calculation in [4_build](file:///mnt/Storage/ie/programming/bash/archiso/4_build) (e.g., `quota=200%` for 2 full cores). |
+| **`systemd-run: CPUQuota` throttle too high/low** | Host core count constraints                         | Modify the `quota` calculation in [4_build](4_build) (e.g., `quota=200%` for 2 full cores). |
 | **Pacman signature failure in `2_pkgs`**          | Outdated host Arch keyring                          | Update keyring prior to build: `sudo pacman -Sy archlinux-keyring`.                                                                         |
 
 ---
 
 ## Configuration Reference
 
-- [packages_live.x86_64](file:///mnt/Storage/ie/programming/bash/archiso/packages_live.x86_64): Packages installed into the live ISO environment.
-- [`etc/skel/packages_min.x86_64`](file:///mnt/Storage/ie/programming/bash/archiso/etc/skel/packages_min.x86_64): Manifest of base packages intended for minimal system installations.
-- [`etc/skel/install-live.sh`](file:///mnt/Storage/ie/programming/bash/archiso/etc/skel/install-live.sh): Automated disk wipe, GPT creation, formatting, and offline pacstrap logic.
-- [`etc/skel/install-chroot.sh`](file:///mnt/Storage/ie/programming/bash/archiso/etc/skel/install-chroot.sh): Automated post-installation locale, daemon, user, and boot configuration.
+- [packages_live.x86_64](packages_live.x86_64): Packages installed into the live ISO environment.
+- [`etc/skel/packages_collection.x86_64`](etc/skel/packages_collection.x86_64): Declarative manifest of packages bundled for target installation and offline caching.
+- [`etc/skel/install-live.sh`](etc/skel/install-live.sh): Automated disk wipe, GPT creation, formatting, and offline pacstrap logic.
+- [`etc/skel/install-chroot.sh`](etc/skel/install-chroot.sh): Automated post-installation locale, daemon, user, and boot configuration.
 
 ---
 
 ## License
 
-This project is licensed under the terms of the **GNU General Public License v3.0** (GPL-3.0). See the [LICENSE](file:///mnt/Storage/ie/programming/bash/archiso/LICENSE) file for complete terms and conditions.
+This project is licensed under the terms of the **GNU General Public License v3.0** (GPL-3.0-or-later). See the [LICENSE](LICENSE) file for complete terms and conditions.
