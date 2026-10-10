@@ -11,6 +11,7 @@ git
 linux
 linux-firmware
 linux-headers
+man-db
 nano
 networkmanager
 sbctl
@@ -20,7 +21,6 @@ tmux
 usbutils
 vim
 zsh
-man-db
 
 # Basic GUI
 firefox
@@ -28,9 +28,9 @@ gdm
 gnome-shell
 gnome-terminal
 gnome-text-editor
-yay
-vulkan-intel
 timeshift
+vulkan-intel
+yay
 
 # Looks
 bat
@@ -44,47 +44,46 @@ lolcat
 # Terminal utils
 7zip
 acpi
-bind
-btop
 bc
+bind
 bluez-utils
+btop
 certbot
+cpulimit
 downgrade
 exfatprogs
 fdupes
 imagemagick
-rsync
 intel-gpu-tools
 jq
 less
 nginx
 ngrok
 nmap
-nss-mdns
 ntfs-3g
 nvme-cli
 oh-my-zsh-git
+rsync
 sshpass
 stress
-wl-clipboard
 testdisk
 ufw
 wget
+wl-clipboard
 zip
 
 # Coding
-antigravity-ide
 claude-code
 docker
-docker-compose
 docker-buildx
-go
+docker-compose
 github-cli
 glab
+go
 npm
+opencode
 rust
 zed
-opencode
 
 # GUI applications
 brave-origin-bin
@@ -102,29 +101,27 @@ obsidian
 onlyoffice-bin
 proton-vpn-gtk-app
 qbittorrent
-rpi-imager
-telegram-desktop
 rustdesk-bin
+telegram-desktop
+tlauncher-installer
 ventoy-bin
 vlc
 vlc-plugins-all
-tlauncher-installer
 
 # GNOME
-gnome-backgrounds
+dconf-editor
+extension-manager
 gnome-calculator
 gnome-clocks
 gnome-connections
 gnome-control-center
 gnome-menus
 gnome-remote-desktop
+gnome-shell-extensions
 gnome-system-monitor
 gnome-tweaks
-gnome-shell-extensions
 power-profiles-daemon
-extension-manager
 snapshot
-dconf-editor
 
 # GVFS
 gvfs
@@ -151,23 +148,23 @@ virtualbox-guest-iso
 
 # Seasonal
 #kubectl
-#mongodb-compass-bin
+#lib32-vulkan-intel
+#lutris
 #minikube
 #mkcert
+#mongodb-compass-bin
 #obs-studio
 #postman-bin
+#python313
+#retroarch
 #steam
 #timeshift
-#lutris
-#wine
-#lib32-vulkan-intel
-chromium
-#python313
 #tk
-#retroarch
+#wine
 
-aspnet-runtime
-aspnet-targeting-pack
-dotnet-sdk
-ex-vi-compat
-rpm-tools
+#aspnet-runtime
+#aspnet-targeting-pack
+#chromium
+#dotnet-sdk
+#ex-vi-compat
+#rpm-tools
