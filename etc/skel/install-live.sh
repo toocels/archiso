@@ -1,23 +1,22 @@
 #!/bin/bash
 
-DRIVE=${DRIVE:?Define DRIVE var with like sda or something bruh}
+DRIVE=${DRIVE:?Please set the DRIVE environment variable (e.g., DRIVE=sda or DRIVE=nvme0n1)}
 
-if [ "$EUID" -ne 0 ]
-then
-	echo "Please run as root."
-	exit
+if [ "$EUID" -ne 0 ]; then
+	echo "Error: Please run as root."
+	exit 1
 fi
 
-# wipe drive
+# Wipe target drive
 wipefs -a /dev/$DRIVE
 echo -e "g\nw\n" | fdisk /dev/$DRIVE
 
-# create partitions
+# Create GPT partitions (1: EFI System Partition, 2: Root Linux filesystem)
 echo -e "n\n\n\n+1G\nw\n" | fdisk /dev/$DRIVE
 echo -e "n\n\n\n\nw\n" | fdisk /dev/$DRIVE
 echo -e "t\n1\n1\nw\n" | fdisk /dev/$DRIVE
 
-# format partitions
+# Format partitions
 mkfs.fat -F32 /dev/${DRIVE}1
 mkfs.ext4 /dev/${DRIVE}2
 

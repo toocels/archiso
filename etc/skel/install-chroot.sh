@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DRIVE=${DRIVE:?Define DRIVE var with like sda or something bruh}
+DRIVE=${DRIVE:?Please set the DRIVE environment variable (e.g., DRIVE=sda or DRIVE=nvme0n1)}
 
 HOSTNAME=archbtw
 USERNAME=toocels
@@ -28,23 +28,23 @@ passwd ${USERNAME}
 
 usermod -aG docker toocels
 
-# Grub bootmgr
+# GRUB Bootloader setup (alternative)
 #grub-install --efi-dir=/boot/efi
 #grub-mkconfig -o /boot/grub/grub.cfg
 
-# UKI
+# Unified Kernel Image (UKI) setup
 #echo "root=UUID=$(blkid -s UUID -o value /dev/${DRIVE}2) rw quiet loglevel=3 systemd.show_status=auto rd.udev.log_level=3 vt.global_cursor_default=0" > /etc/kernel/cmdline
-# echo comment default_image, uncomment default_uki, also uncomment bitmap image, AND change /efi to /boot/efi
-#read smthng
+#echo "Note: Comment default_image, uncomment default_uki, uncomment bitmap image, and change /efi to /boot/efi"
+#read -r -p "Press Enter to edit mkinitcpio presets..."
 #nano /etc/mkinitcpio.d/linux.preset
 #mkdir -p /boot/efi/EFI/Linux
 #mkinitcpio -p linux
 #efibootmgr --create --disk /dev/${DRIVE}1 --part 1 --label "Arch Linux" --loader /EFI/Linux/arch-linux.efi --unicode
 
-# install yay
+# AUR helper (yay) installation
 #git clone https://aur.archlinux.org/yay.git; cd yay; makepkg -si
 
-# Sbctl secure boot setup
+# sbctl Secure Boot setup
 #sbctl create-keys
 #sbctl enroll-keys -m
 #sbctl sign -s /boot/efi/EFI/Linux/arch-linux.efi

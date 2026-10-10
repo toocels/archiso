@@ -1,7 +1,12 @@
 /tmp
 /archlive
-/etc/ske/mePkg
 /work
 /out
 tmp.txt
-etc/skel/mePkg
+/etc/skel/mePkg
+mePkg/
+mePkg.tar
+build.log
+deps.txt
+packages.x86_64
+packages_pacman.x86_64
