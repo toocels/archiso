@@ -18,8 +18,8 @@ exec > build.log 2>&1
 echo "$(date "+%Y-%m-%d %H:%M:%S") - Starting ISO compilation..."
 
 # Calculate CPU quota to throttle mkarchiso resource consumption:
-# Sets ceiling to 50% per CPU core, ensuring host responsiveness during squashfs compression
-quota=$(( $(nproc) * 50 ))%
+# Sets ceiling to 75% per CPU core, ensuring host responsiveness during squashfs compression
+quota=$(( $(nproc) * 75 ))%
 echo "Applying CPU quota limit: $quota"
 
 # Execute mkarchiso within a transient systemd scope enforcing the CPUQuota limit
