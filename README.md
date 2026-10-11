@@ -17,17 +17,17 @@ A modular automation suite designed to generate customized, bootable Arch Linux 
   - [Directory Layout](#directory-layout)
 - [Prerequisites](#prerequisites)
 - [Build Instructions](#build-instructions)
-  - [Step 1: Workspace Initialization](#step-1-workspace-initialization)
-  - [Step 2: Offline Package Assembly](#step-2-offline-package-assembly)
-  - [Step 3: Archiso Profile Customization](#step-3-archiso-profile-customization)
-  - [Step 4: ISO Compilation and Repository Injection](#step-4-iso-compilation-and-repository-injection)
+  - [Step 1: Offline Package Assembly](#step-1-offline-package-assembly)
+  - [Step 2: Archiso Profile Customization](#step-2-archiso-profile-customization)
+  - [Step 3: ISO Compilation and Repository Injection](#step-3-iso-compilation-and-repository-injection)
+  - [Step 4: Build Artifact Cleanup](#step-4-build-artifact-cleanup)
 - [How-To Operations Guide](#how-to-operations-guide)
   - [How to Test the ISO in a Virtual Machine (QEMU/KVM)](#how-to-test-the-iso-in-a-virtual-machine-qemukvm)
   - [How to Write the ISO to a USB Drive](#how-to-write-the-iso-to-a-usb-drive)
   - [How to Deploy to Target Hardware (Offline Installation)](#how-to-deploy-to-target-hardware-offline-installation)
   - [How to Customize Live Environment Packages](#how-to-customize-live-environment-packages)
   - [How to Manage Target Packages in packages_collection.x86_64](#how-to-manage-target-packages-in-packages_collectionx86_64)
-  - [How to Customize Default Credentials and Users](#how-to-customize-default-credentials-and-users)
+  - [How to Customize the Installed Hostname and User](#how-to-customize-the-installed-hostname-and-user)
   - [How to Perform a Clean Rebuild](#how-to-perform-a-clean-rebuild)
   - [How to Troubleshoot Build Issues](#how-to-troubleshoot-build-issues)
 - [Configuration Reference](#configuration-reference)
@@ -48,7 +48,7 @@ This project automates the compilation of a custom offline repository directly f
 - **Declarative Package Manifest**: Reads packages from [`etc/skel/packages_collection.x86_64`](etc/skel/packages_collection.x86_64) rather than depending on host-installed system packages, ensuring consistent and reproducible builds.
 - **Automated Recursive Dependency Resolution**: Uses `pactree` to resolve complete official dependency trees into `deps.txt` so that no runtime network connectivity is required during target system deployment.
 - **Self-Contained Offline Repository (`mePkg`)**: Downloads `.pkg.tar.zst` packages and generates a Pacman database index (`repo-add mePkg/mePkg.db.tar.gz`) mapped directly into the root of the ISO image (`/mePkg`).
-- **Customized Live Environment**: Bundles administrative utilities (GNOME Terminal, Disks, GParted, TestDisk, Nmap, Fastfetch, `sbctl`, and Btrfs/LVM toolchains) into the live boot medium.
+- **Customized Live Environment**: Bundles administrative utilities (GNOME Terminal, Disks, GParted, TestDisk, Nmap, Fastfetch, Timeshift, `sbctl`, and Btrfs/LVM toolchains) into the live boot medium.
 - **Resource-Constrained Compilation**: Uses `systemd-run --scope -p CPUQuota` to throttle CPU usage during intensive `mkarchiso` squashfs compression, keeping host systems responsive.
 - **Direct ISO Layer Injection**: Leverages `xorriso` to graft the offline package repository directly into the built ISO structure without requiring a full live squashfs rebuild.
 - **Automated Target Provisioning**: Ships automated installation scripts ([`install-live.sh`](etc/skel/install-live.sh) and [`install-chroot.sh`](etc/skel/install-chroot.sh)) to automate GPT disk partitioning, filesystem formatting, offline pacstrapping from the local repository, and initial system configuration.
@@ -63,31 +63,26 @@ This project automates the compilation of a custom offline repository directly f
 The build workflow is structured into four sequential, decoupled stages:
 
 ```
-[1_init]   --> Prepares dedicated /iso workspace directory
+[1_pkgs]    --> Reads etc/skel/packages_collection.x86_64, resolves deps, builds mePkg.db
     |
-[2_pkgs]   --> Reads etc/skel/packages_collection.x86_64, resolves deps, builds mePkg.db
+[2_releng]  --> Configures archlive profile, overlays custom /etc
     |
-[3_releng] --> Configures archlive profile, overlays custom /etc & packages_live.x86_64
+[3_build]   --> Compiles live ISO (mkarchiso) & injects offline repository (xorriso)
     |
-[4_build]  --> Compiles live ISO (mkarchiso) & injects offline repository (xorriso)
+[4_cleanup] --> Removes intermediate/output artifacts from stages 1-3
 ```
 
 ### Directory Layout
 
 ```
 .
-├── 1_init                         # Stage 1: Workspace setup script (/iso creation)
-├── 2_pkgs                         # Stage 2: Offline package resolution and mePkg repository builder
-├── 3_releng                       # Stage 3: Archiso profile configuration and overlay staging
-├── 4_build                        # Stage 4: ISO compilation and xorriso repository injection
-├── packages_live.x86_64           # Package manifest for live bootable ISO environment
+├── 1_pkgs                         # Stage 1: Offline package resolution and mePkg repository builder
+├── 2_releng                       # Stage 2: Archiso profile configuration and overlay staging
+├── 3_build                        # Stage 3: ISO compilation and xorriso repository injection
+├── 4_cleanup                      # Stage 4: Removes build artifacts from stages 1-3
 ├── etc/                           # Custom configuration overlays for live and installed systems
-│   ├── group                      # Pre-configured groups
-│   ├── gshadow                    # Pre-configured group shadow database
-│   ├── passwd                     # Pre-configured user accounts
-│   ├── shadow                     # Pre-configured user shadow database
-│   └── skel/                      # User skeleton directory deployed to live/installed system
-│       ├── .bashrc                # Shell startup configuration and aliases (e.g. gui launcher)
+│   └── skel/                      # Dropped directly into archlive/airootfs/root/ (see Step 2)
+│       ├── .zshrc                 # Shell startup configuration and aliases (e.g. gui launcher)
 │       ├── install-live.sh        # Automated partitioning and offline pacstrap script
 │       ├── install-chroot.sh      # Automated post-installation chroot configuration script
 │       └── packages_collection.x86_64 # Declarative package manifest for target installation
@@ -111,7 +106,6 @@ Before executing the build pipeline, ensure your host environment meets the foll
   - `archiso`: Provides the `mkarchiso` build engine and default profiles.
   - `pacman-contrib`: Provides `pactree` for recursive dependency tree calculation.
   - `libisoburn`: Provides `xorriso` for ISO image manipulation.
-  - `edk2-ovmf` & `qemu-desktop` _(Optional)_: For local UEFI virtual machine testing.
 
 ---
 
@@ -119,62 +113,55 @@ Before executing the build pipeline, ensure your host environment meets the foll
 
 Execute each stage in sequential numerical order from the repository root.
 
-### Step 1: Workspace Initialization
-
-Initializes a clean working directory at `/iso` and copies project sources:
-
 ```bash
-chmod +x 1_init 2_pkgs 3_releng 4_build
-./1_init
-cd /iso
+chmod +x 1_pkgs 2_releng 3_build 4_cleanup
 ```
 
-### Step 2: Offline Package Assembly
+### Step 1: Offline Package Assembly
 
 Reads [`etc/skel/packages_collection.x86_64`](etc/skel/packages_collection.x86_64), filters official repository packages against the sync database, computes recursive dependencies using `pactree`, downloads `.pkg.tar.zst` files into `mePkg/`, and generates the repository index:
 
 ```bash
-./2_pkgs
+./1_pkgs
 ```
 
 _Generated artifacts:_
 
 - `packages.x86_64`: Sanitized unique package list from the collection manifest.
 - `packages_pacman.x86_64`: Filtered list of official repository packages (excluding AUR/foreign packages).
-- `deps.txt`: Recursively resolved dependency list.
 - `mePkg/`: Directory containing all `.pkg.tar.zst` files and `mePkg.db.tar.gz`.
 - `mePkg.tar`: Portability archive of the repository directory.
 
-### Step 3: Archiso Profile Customization
+(`deps.txt` is an intermediate dependency list, deleted by the script itself once `mePkg` is built.)
+
+### Step 2: Archiso Profile Customization
 
 Copies the base `releng` profile and overlays custom configurations:
 
 ```bash
-./3_releng
+./2_releng
 ```
 
 _Customizations applied:_
 
 - Copies standard `releng` profile into `archlive`.
+- Bakes the `ROOT_PASSWORD` variable (default `l`) into `archlive/airootfs/etc/shadow` as root's password. tty1 autologin (`releng` default) bypasses this entirely — it only matters for SSH/`su`/`sudo`.
+- Switches live-ISO networking from `releng`'s default `systemd-networkd`/`iwd` stack to `NetworkManager` (enabled via a `multi-user.target.wants` symlink, same mechanism `releng` itself uses), so it's running — and the only thing managing the interface — by boot. `iwd` stays enabled as NetworkManager's wifi backend via a `NetworkManager/conf.d` drop-in, since `wpa_supplicant` isn't in the package list.
 - Saves `packages.x86_64` and `packages_pacman.x86_64` into `etc/skel/`.
-- Overlays custom configuration tree (`etc/*`) into `archlive/airootfs/etc/`.
+- Drops `etc/skel/`'s contents (install scripts, manifests, `.zshrc`) directly into `archlive/airootfs/root/` (not `archlive/airootfs/etc/skel/`, which would collide with `grml-zsh-config`'s own `/etc/skel/.zshrc` during pacstrap).
 - Appends live environment packages from [`packages_live.x86_64`](packages_live.x86_64) into `archlive/packages.x86_64`.
-- Enforces user authentication by removing tty1 autologin (`getty@tty1.service.d/autologin.conf`).
-- Configures UEFI boot entries with `copytoram=no` and expands copy-on-write overlay space (`cow_spacesize=100%`).
+- Keeps the `releng` default: tty1 autologin as `root` (no password prompt), and `sshd` already enabled with `PermitRootLogin yes` / `PasswordAuthentication yes` via `etc/ssh/sshd_config.d/10-archiso.conf`.
+- Configures UEFI boot entries with `copytoram=no` and expands copy-on-write overlay space (`cow_spacesize=50%`).
 
-### Step 4: ISO Compilation and Repository Injection
+### Step 3: ISO Compilation and Repository Injection
 
-Compiles the live squashfs image and injects the offline `mePkg` repository directly into the ISO filesystem structure:
-
-```bash
-./4_build
-```
-
-Progress is written to `build.log`. Monitor in real time:
+Compiles the live squashfs image under a CPU-quota-limited `systemd-run` scope (so `mkarchiso` doesn't lock up the host), then injects the offline `mePkg` repository directly into the ISO filesystem structure:
 
 ```bash
-tail -f build.log
+./3_build
 ```
+
+The quota ceiling is a plain variable at the top of the script (`CPU_QUOTA_PERCENT_PER_CORE=90`, multiplied by `nproc` to get the final `systemd-run -p CPUQuota=` value). Output is streamed to both the console and `build.log` simultaneously via `tee`.
 
 Upon completion, the final bootable ISO is located at:
 
@@ -182,58 +169,19 @@ Upon completion, the final bootable ISO is located at:
 out/cstm-archlinux-<timestamp>-x86_64-wrepo.iso
 ```
 
+### Step 4: Build Artifact Cleanup
+
+Removes every intermediate and output file generated by `1_pkgs`, `2_releng`, and `3_build` (`mePkg/`, `archlive/`, `work/`, `out/`, `build.log`, generated package lists), restoring the repo to its pre-build source state:
+
+```bash
+./4_cleanup
+```
+
+`work/` and `out/` are created by `mkarchiso` running as root (via `sudo systemd-run` in `3_build`), so this step uses `sudo` for those two paths only.
+
 ---
 
 ## How-To Operations Guide
-
-### How to Test the ISO in a Virtual Machine (QEMU/KVM)
-
-Before writing the ISO to physical media, verify it in a virtual machine:
-
-```bash
-# Locate generated image
-ISO_PATH=$(ls out/*-wrepo.iso | head -n 1)
-
-# Create a temporary virtual disk
-qemu-img create -f qcow2 test-disk.img 20G
-
-# Launch with UEFI (OVMF) support and KVM acceleration
-qemu-system-x86_64 \
-  -enable-kvm \
-  -m 4G \
-  -smp 4 \
-  -bios /usr/share/edk2/x64/OVMF.4m.fd \
-  -cdrom "$ISO_PATH" \
-  -drive file=test-disk.img,format=qcow2,if=virtio \
-  -boot d
-```
-
-### How to Write the ISO to a USB Drive
-
-#### Method A: Direct Block Write (`dd`)
-
-> [!CAUTION]
-> Ensure the target drive (`/dev/sdX`) is correct. Writing to an incorrect block device will result in irreversible data loss.
-
-1. Identify the USB device name:
-   ```bash
-   lsblk
-   ```
-2. Unmount any active partitions on the device:
-   ```bash
-   sudo umount /dev/sdX* 2>/dev/null || true
-   ```
-3. Write the image:
-   ```bash
-   ISO_PATH=$(ls out/*-wrepo.iso | head -n 1)
-   sudo dd if="$ISO_PATH" of=/dev/sdX bs=4M status=progress oflag=sync
-   ```
-
-#### Method B: Ventoy (Recommended for Multiboot)
-
-Copy the generated `*-wrepo.iso` directly into the data partition of a Ventoy-prepared USB drive.
-
----
 
 ### How to Deploy to Target Hardware (Offline Installation)
 
@@ -244,26 +192,32 @@ Copy the generated `*-wrepo.iso` directly into the data partition of a Ventoy-pr
    ```bash
    gui
    ```
+   Alternatively, drive the install remotely over SSH — both `sshd` and `NetworkManager` are enabled and running by the time the ISO finishes booting, no manual steps needed:
+   ```bash
+   ssh root@<live-machine-ip>   # password: l
+   ```
+   `releng`'s `etc/ssh/sshd_config.d/10-archiso.conf` already sets `PermitRootLogin yes` + `PasswordAuthentication yes`, and [`2_releng`](2_releng) bakes a root password (`ROOT_PASSWORD` at the top of the script, default `l`) straight into `archlive/airootfs/etc/shadow` at build time.
+   > [!WARNING]
+   > `l` is a throwaway test password baked into every ISO this project builds. Change `ROOT_PASSWORD` in [`2_releng`](2_releng) before building anything that will touch a network you don't fully trust.
 3. **Identify the Destination Drive**:
    ```bash
    lsblk
    ```
 4. **Execute the Automated Installer**:
    Set the `DRIVE` variable to the base device name (defaults to `sda` if omitted):
+   `install-live.sh` is dropped into `/root` (root's live-session home), so it's already on hand after autologin:
    - For SATA / USB drives:
      ```bash
      export DRIVE=sda
-     sudo -E bash /etc/skel/install-live.sh
+     bash ~/install-live.sh
      ```
    - For NVMe drives:
      ```bash
      export DRIVE=nvme0n1
-     sudo -E bash /etc/skel/install-live.sh
+     bash ~/install-live.sh
      ```
-5. **Set Passwords and User Credentials**:
-   During execution, the installer switches into `arch-chroot` and prompts for:
-   - Root user password.
-   - Password for the administrative account (`toocels`).
+5. **Set Account Passwords**:
+   During execution, the installer switches into `arch-chroot`, prompts for the root password, then creates the admin user (`USERNAME` in [`install-chroot.sh`](etc/skel/install-chroot.sh), default `toocels`) and prompts for its password too.
 6. **Reboot into Installed System**:
    ```bash
    reboot
@@ -282,7 +236,7 @@ To include additional troubleshooting utilities, window managers, or drivers in 
    neovim
    wireguard-tools
    ```
-3. Re-run `./3_releng` and `./4_build`.
+3. Re-run `./2_releng` and `./3_build`.
 
 ---
 
@@ -291,7 +245,7 @@ To include additional troubleshooting utilities, window managers, or drivers in 
 The target installation package list is maintained in [`etc/skel/packages_collection.x86_64`](etc/skel/packages_collection.x86_64).
 
 - Lines starting with `#` are treated as comments and ignored.
-- Inline comments (`# comment`) and empty lines are automatically stripped by `2_pkgs`.
+- Inline comments (`# comment`) and empty lines are automatically stripped by `1_pkgs`.
 - Official packages are downloaded into the offline `mePkg` repository.
 - Foreign/AUR packages (e.g. `yay`, `brave-origin-bin`, `rustdesk-bin`) are preserved in `packages.x86_64` for post-installation setup.
 
@@ -303,42 +257,48 @@ The target installation package list is maintained in [`etc/skel/packages_collec
 
 ---
 
-### How to Customize Default Credentials and Users
+### How to Customize the Installed Hostname and User
 
-User and group configurations for the live environment are stored in `etc/`:
+The live ISO itself uses only the `root` account — no separate user is
+created there, and no `etc/passwd`/`etc/group` overlay is shipped. tty1
+autologin stays passwordless (the stock `releng` default), but root does get
+a baked-in password for SSH — see `ROOT_PASSWORD` in [`2_releng`](2_releng).
 
-1. Modify `etc/passwd` and `etc/shadow` to update default usernames, shell assignments, or password hashes.
-2. Modify [`etc/skel/install-chroot.sh`](etc/skel/install-chroot.sh) to change target install values:
-   ```bash
-   HOSTNAME="mycustomhost"
-   USERNAME="admin"
-   ```
+The **installed** system is different: [`install-chroot.sh`](etc/skel/install-chroot.sh)
+sets a root password, then creates an admin user (added to `wheel` and, if
+present, `docker`) and sets its password too. Both the hostname and the
+username are plain variables at the top of the script:
+
+```bash
+HOSTNAME="mycustomhost"
+USERNAME="myuser"
+```
 
 ---
 
 ### How to Perform a Clean Rebuild
 
-To wipe intermediate build artifacts, cached profiles, and partial ISO images:
+Use [`4_cleanup`](4_cleanup) to wipe intermediate build artifacts, cached profiles, and partial ISO images, then re-run whichever stages you need:
 
 ```bash
-# Clean working directories (3_releng removes/recreates archlive itself)
-sudo rm -rf /iso/work /iso/out /iso/build.log
+./4_cleanup
 
-# Re-run pipeline from stage 3 (if mePkg is preserved) or stage 1 (for full rebuild)
-./3_releng
-./4_build
+# Re-run from stage 2 (if mePkg is preserved) or stage 1 (for a full rebuild)
+./2_releng
+./3_build
 ```
 
 ---
 
 ### How to Troubleshoot Build Issues
 
-| Issue                                             | Cause                                               | Solution                                                                                                                                    |
-| :------------------------------------------------ | :-------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Out of disk space**                             | `/iso` or `/tmp` filled during squashfs compression | Ensure `/iso` is on a filesystem with at least 25 GB free space.                                                                            |
-| **`pactree: [unresolvable]` errors**              | Package name changed or missing upstream            | Inspect `deps.txt` and verify packages exist in active `pacman` mirrors.                                                                    |
-| **`systemd-run: CPUQuota` throttle too high/low** | Host core count constraints                         | Modify the `quota` calculation in [4_build](4_build) (e.g., `quota=200%` for 2 full cores). |
-| **Pacman signature failure in `2_pkgs`**          | Outdated host Arch keyring                          | Update keyring prior to build: `sudo pacman -Sy archlinux-keyring`.                                                                         |
+| Issue                                                            | Cause                                                                                                                                                          | Solution                                                                                                                                                                                                                                                                  |
+| :--------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Out of disk space**                                            | Repo working directory or `/tmp` filled during squashfs compression                                                                                            | Ensure the repo clone is on a filesystem with at least 25 GB free space.                                                                                                                                                                                                  |
+| **`pactree: [unresolvable]` errors**                             | Package name changed or missing upstream                                                                                                                       | `deps.txt` is deleted at the end of a successful `1_pkgs` run (and again, just in case, by `4_cleanup`) — comment out its final `rm -f deps.txt` line temporarily to inspect it, or check against active `pacman` mirrors directly.                                       |
+| **`systemd-run: CPUQuota` throttle too high/low**                | Host core count constraints                                                                                                                                    | Adjust `CPU_QUOTA_PERCENT_PER_CORE` at the top of [3_build](3_build) (e.g., `100` to allow a full core per CPU).                                                                                                                                                          |
+| **Pacman signature failure in `1_pkgs`**                         | Outdated host Arch keyring                                                                                                                                     | Update keyring prior to build: `sudo pacman -Sy archlinux-keyring`.                                                                                                                                                                                                       |
+| **`install-live.sh` fdisk fails with `Device or resource busy`** | Something (commonly `udisks2` auto-probing, or a leftover mount/swap from a prior attempt) briefly held the disk while the kernel reloaded the partition table | The script already retries via `partprobe`/`udevadm settle` after a single merged `fdisk` session. If it still fails, `swapoff`/`umount` anything referencing the target drive first, or just re-run the script — the partition table itself was already written to disk. |
 
 ---
 

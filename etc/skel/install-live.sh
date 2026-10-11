@@ -30,16 +30,35 @@ echo "Starting automated installation on /dev/${DRIVE}..."
 echo "Wiping drive signatures on /dev/${DRIVE}..."
 wipefs -a "/dev/${DRIVE}"
 
-# Create a clean GPT partition table
-echo -e "g\nw\n" | fdisk "/dev/${DRIVE}"
+# Create a clean GPT table plus EFI (+1G) and root (remaining space) partitions
+# in a single fdisk session, so the kernel only has to reload the partition
+# table once at the final "w" instead of once per invocation. Doing it as 4
+# separate fdisk calls let something (commonly udisks2 auto-probing the new
+# partitions) grab the device between calls, making fdisk's own re-read
+# ioctl report "Device or resource busy" even though the table write itself
+# already succeeded - that spurious non-zero exit is what tripped `set -e`.
+echo "Creating GPT table with EFI System and Root partitions..."
+fdisk "/dev/${DRIVE}" <<-EOF || true
+	g
+	n
 
-# Step 2: Create GPT partitions:
-# Partition 1: +1G EFI System Partition
-# Partition 2: Remaining space for Linux root filesystem
-echo "Creating EFI System and Root partitions..."
-echo -e "n\n\n\n+1G\nw\n" | fdisk "/dev/${DRIVE}"
-echo -e "n\n\n\n\nw\n" | fdisk "/dev/${DRIVE}"
-echo -e "t\n1\n1\nw\n" | fdisk "/dev/${DRIVE}"
+
+	+1G
+	n
+
+
+
+	t
+	1
+	1
+	w
+EOF
+
+# Force the kernel/udev to pick up the new partition table before we touch
+# any partition nodes below (fdisk's own reload above may have been rejected
+# as busy; the table is on disk regardless, this just makes the nodes appear).
+partprobe "/dev/${DRIVE}" || true
+udevadm settle
 
 # Determine partition naming based on disk type (e.g. nvme0n1p1 vs sda1)
 if [[ "${DRIVE}" =~ [0-9]$ ]]; then
