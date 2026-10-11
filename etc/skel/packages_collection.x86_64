@@ -23,7 +23,7 @@ vim
 zsh
 
 # Basic GUI
-firefox
+chromium
 gdm
 gnome-shell
 gnome-terminal
@@ -82,6 +82,7 @@ glab
 go
 npm
 opencode
+jre-openjdk
 rust
 zed
 
@@ -103,7 +104,6 @@ proton-vpn-gtk-app
 qbittorrent
 rustdesk-bin
 telegram-desktop
-tlauncher-installer
 ventoy-bin
 vlc
 vlc-plugins-all

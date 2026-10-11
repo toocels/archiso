@@ -62,8 +62,8 @@ mkfs.ext4 -F "${PART_ROOT}"
 # Step 4: Mount root and EFI filesystems to /mnt
 echo "Mounting target filesystems..."
 mount "${PART_ROOT}" /mnt
-mkdir -p /mnt/boot/efi
-mount "${PART_EFI}" /mnt/boot/efi
+mkdir -p /mnt/efi
+mount "${PART_EFI}" /mnt/efi
 
 # Step 5: Initialize Pacman keyring in the live environment
 pacman-key --init

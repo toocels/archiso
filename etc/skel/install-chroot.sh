@@ -69,12 +69,11 @@ echo "==================================================================="
 echo "Note: In mkinitcpio presets (/etc/mkinitcpio.d/linux.preset):"
 echo "  1. Comment 'default_image'"
 echo "  2. Uncomment 'default_uki'"
-echo "  3. Change /efi to /boot/efi"
 echo "==================================================================="
 read -r -p "Press Enter to open and review mkinitcpio preset..."
 nano /etc/mkinitcpio.d/linux.preset
 
-mkdir -p /boot/efi/EFI/Linux
+mkdir -p /efi/EFI/Linux
 mkinitcpio -p linux
 
 # Register the generated UKI into UEFI NVRAM using efibootmgr
@@ -82,12 +81,12 @@ echo "Registering UEFI boot entry..."
 efibootmgr --create --disk "/dev/${DRIVE}" --part 1 --label "Arch Linux" --loader /EFI/Linux/arch-linux.efi --unicode
 
 # Optional: Alternative GRUB Bootloader setup
-# grub-install --efi-dir=/boot/efi
+# grub-install --efi-dir=/efi
 # grub-mkconfig -o /boot/grub/grub.cfg
 
 # Optional: Secure Boot setup via sbctl
 # sbctl create-keys
 # sbctl enroll-keys -m
-# sbctl sign -s /boot/efi/EFI/Linux/arch-linux.efi
+# sbctl sign -s /efi/EFI/Linux/arch-linux.efi
 
 echo "Post-installation chroot configuration completed successfully."
