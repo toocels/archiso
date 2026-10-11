@@ -44,6 +44,9 @@ printf "\n127.0.0.1\tlocalhost\n::1\t\tlocalhost\n127.0.0.1\t${HOSTNAME}\n" >> /
 # Configure default terminal editor
 export EDITOR=nano
 
+# Switch root's login shell to zsh (bundled via packages_collection.x86_64)
+usermod -s /usr/bin/zsh root
+
 # Configure sudo privileges for members of the wheel group
 echo "%wheel ALL=(ALL:ALL) NOPASSWD: ALL" >> /etc/sudoers
 

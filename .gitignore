@@ -3,7 +3,6 @@
 /work
 /out
 tmp.txt
-/etc/skel/mePkg
 mePkg/
 mePkg.tar
 build.log

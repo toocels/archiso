@@ -1,8 +1,8 @@
 #!/bin/bash
 # -----------------------------------------------------------------------------
 # Project: Arch Linux Custom ISO & Offline Repository Builder
-# File: 4_build
-# Description: Stage 4 - Live ISO Compilation & Offline Repository Injection
+# File: 3_build
+# Description: Stage 3 - Live ISO Compilation & Offline Repository Injection
 #              Compiles the live bootable ISO using mkarchiso under systemd CPU
 #              quota control to prevent host lockup, then grafts the offline package
 #              repository (mePkg) into the root of the ISO image using xorriso.
@@ -12,14 +12,16 @@
 # -----------------------------------------------------------------------------
 set -e
 
-# Redirect all stdout and stderr streams to build.log for tracking and debugging
-exec > build.log 2>&1
+# Ceiling per CPU core for mkarchiso's systemd scope, ensuring host responsiveness during squashfs compression
+CPU_QUOTA_PERCENT_PER_CORE=90
+
+# Stream all stdout and stderr to both the console and build.log
+exec > >(tee build.log) 2>&1
 
 echo "$(date "+%Y-%m-%d %H:%M:%S") - Starting ISO compilation..."
 
-# Calculate CPU quota to throttle mkarchiso resource consumption:
-# Sets ceiling to 75% per CPU core, ensuring host responsiveness during squashfs compression
-quota=$(( $(nproc) * 75 ))%
+# Calculate CPU quota to throttle mkarchiso resource consumption
+quota=$(( $(nproc) * CPU_QUOTA_PERCENT_PER_CORE ))%
 echo "Applying CPU quota limit: $quota"
 
 # Execute mkarchiso within a transient systemd scope enforcing the CPUQuota limit

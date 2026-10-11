@@ -1,0 +1,79 @@
+#!/bin/bash
+# -----------------------------------------------------------------------------
+# Project: Arch Linux Custom ISO & Offline Repository Builder
+# File: 2_releng
+# Description: Stage 2 - Archiso Profile Customization
+#              Copies the standard releng archiso profile, bakes in a root
+#              password for live-ISO SSH access, drops etc/skel into /root,
+#              appends custom live packages, renames the ISO, and configures
+#              UEFI boot parameters.
+#
+# License: GNU General Public License v3.0 (GPL-3.0-or-later)
+# SPDX-License-Identifier: GPL-3.0-or-later
+# -----------------------------------------------------------------------------
+set -e
+
+# Baked-in root password for the live ISO (releng already ships PermitRootLogin
+# yes + PasswordAuthentication yes in etc/ssh/sshd_config.d/10-archiso.conf, so
+# this is the only thing standing between "boot it, plug in ethernet" and SSH
+# access). CHANGE THIS before building anything you'll put on a real network.
+ROOT_PASSWORD="l"
+
+echo "$(date "+%Y-%m-%d %H:%M:%S") - Starting archlive setup..."
+
+# Copy the standard Arch Linux releng profile as the base template
+echo "Copying standard archiso releng profile..."
+rm -rf archlive
+cp -r /usr/share/archiso/configs/releng/ archlive
+
+# Bake the root password into the live ISO's shadow file (releng ships root
+# with no password at all, field 2 of the colon-separated line is empty)
+echo "Setting baked-in root password for live ISO SSH access..."
+root_hash=$(openssl passwd -6 "${ROOT_PASSWORD}")
+sed -i "s#^root:[^:]*:#root:${root_hash}:#" archlive/airootfs/etc/shadow
+
+# Switch the live ISO's default networking from releng's systemd-networkd/iwd
+# stack to NetworkManager, so it's actually running (and the only thing
+# touching the interface) by the time SSH is reachable. iwd stays enabled as
+# NetworkManager's wifi backend since wpa_supplicant isn't in the package list.
+echo "Switching live ISO networking to NetworkManager..."
+mkdir -p archlive/airootfs/etc/systemd/system/multi-user.target.wants
+ln -sf /usr/lib/systemd/system/NetworkManager.service archlive/airootfs/etc/systemd/system/multi-user.target.wants/NetworkManager.service
+rm -f archlive/airootfs/etc/systemd/system/multi-user.target.wants/systemd-networkd.service \
+	archlive/airootfs/etc/systemd/system/multi-user.target.wants/systemd-resolved.service \
+	archlive/airootfs/etc/systemd/system/dbus-org.freedesktop.network1.service \
+	archlive/airootfs/etc/systemd/system/dbus-org.freedesktop.resolve1.service \
+	archlive/airootfs/etc/systemd/system/network-online.target.wants/systemd-networkd-wait-online.service \
+	archlive/airootfs/etc/systemd/system/sockets.target.wants/systemd-networkd.socket
+
+mkdir -p archlive/airootfs/etc/NetworkManager/conf.d
+printf '[device]\nwifi.backend=iwd\n' > archlive/airootfs/etc/NetworkManager/conf.d/10-iwd-backend.conf
+
+# Save generated package manifests into etc/skel for access in the installed environment
+cp packages_pacman.x86_64 etc/skel/packages_pacman.x86_64
+cp packages.x86_64 etc/skel/packages.x86_64
+
+# etc/skel is only copied into a home dir by `useradd -m`, which no longer
+# runs (root already exists) - drop its contents into /root directly so
+# .zshrc is sourced and the install scripts/manifests land in root's home.
+# (Overlaying it into archlive/airootfs/etc/skel instead would collide with
+# grml-zsh-config's own /etc/skel/.zshrc during pacstrap.)
+echo "Dropping etc/skel contents into archlive airootfs /root..."
+cp -r etc/skel/. archlive/airootfs/root/
+
+# Append live environment utilities (desktop, diagnostics, partition tools) to package manifest
+echo "Appending live environment packages..."
+cat packages_live.x86_64 >> archlive/packages.x86_64
+
+# Customize ISO image naming prefix (archlinux -> cstm-archlinux)
+sed -i 's/"archlinux/"cstm-archlinux/' archlive/profiledef.sh
+
+# Bootloader customizations:
+# 1. Configure UEFI systemd-boot entry with copytoram=no and expand copy-on-write overlay space
+sed -i 's/%ARCHISO_UUID%/%ARCHISO_UUID% copytoram=no cow_spacesize=50%/' archlive/efiboot/loader/entries/01-archiso-linux.conf
+
+# 2. Turn off systemd-boot loader timeout/editor menu
+sed -i 's/^timeout.*/timeout 0/' archlive/efiboot/loader/loader.conf
+echo "editor no" >> archlive/efiboot/loader/loader.conf
+
+echo "$(date "+%Y-%m-%d %H:%M:%S") - Archlive setup completed successfully."

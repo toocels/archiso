@@ -1,8 +1,8 @@
 #!/bin/bash
 # -----------------------------------------------------------------------------
 # Project: Arch Linux Custom ISO & Offline Repository Builder
-# File: 2_pkgs
-# Description: Stage 2 - Offline Package Repository Assembly
+# File: 1_pkgs
+# Description: Stage 1 - Offline Package Repository Assembly
 #              Reads the package collection manifest from etc/skel/packages_collection.x86_64,
 #              separates official repository packages from AUR packages, computes recursive
 #              dependencies using pactree, downloads package archives into mePkg/, and
@@ -18,7 +18,6 @@ echo "$(date "+%Y-%m-%d %H:%M:%S") - Starting package setup..."
 # Prepare a clean repository directory for offline packages
 rm -rf mePkg
 mkdir mePkg
-sudo chmod -R 777 mePkg
 
 # Path to the package collection file located strictly in etc/skel
 PKG_COLLECTION="etc/skel/packages_collection.x86_64"
@@ -72,5 +71,8 @@ sudo repo-add mePkg/mePkg.db.tar.gz mePkg/*.zst
 
 # Create an uncompressed tar archive of the repository directory for portability
 tar -cf mePkg.tar mePkg
+
+# deps.txt is only an intermediate input to pacman -Sywd above; discard it
+rm -f deps.txt
 
 echo "$(date "+%Y-%m-%d %H:%M:%S") - Package setup completed successfully."
