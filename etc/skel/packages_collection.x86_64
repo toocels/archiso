@@ -28,7 +28,6 @@ gdm
 gnome-shell
 gnome-terminal
 gnome-text-editor
-timeshift
 vulkan-intel
 yay
 
@@ -57,7 +56,6 @@ imagemagick
 intel-gpu-tools
 jq
 less
-nginx
 ngrok
 nmap
 ntfs-3g
@@ -65,12 +63,13 @@ nvme-cli
 oh-my-zsh-git
 rsync
 sshpass
-stress
+stress-ng
 testdisk
 ufw
 wget
 wl-clipboard
 zip
+keyd
 
 # Coding
 claude-code
@@ -95,7 +94,8 @@ gparted
 gpu-screen-recorder-ui
 gradia
 hardinfo2
-jellyfin-desktop-git-bin
+feishin-bin
+jellium-desktop-bin
 linux-wifi-hotspot-bin
 loupe
 obsidian
@@ -120,6 +120,12 @@ gnome-remote-desktop
 gnome-shell-extensions
 gnome-system-monitor
 gnome-tweaks
+gnome-shell-extension-appindicator
+gnome-shell-extension-blur-my-shell
+gnome-shell-extension-caffeine
+gnome-shell-extension-clipboard-history
+gnome-shell-extension-gsconnect
+gnome-shell-extension-just-perfection-desktop
 power-profiles-daemon
 snapshot
 
